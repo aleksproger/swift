@@ -63,8 +63,7 @@ private func _RegexLiteralLexingFn(
   if let error = error {
     // Emit diagnostic if diagnostics are enabled.
     if let diagEngine = DiagnosticEngine(bridged: bridgedDiagnosticEngine) {
-      let startLoc = SourceLoc(
-        locationInFile: error.location.assumingMemoryBound(to: UInt8.self))!
+      let startLoc = SourceLoc(bridged: swift.SourceLoc(llvm.SMLoc.getFromPointer(error.location)))
       diagEngine.diagnose(startLoc, .regex_literal_parsing_error, error.message)
     }
     return error.completelyErroneous
@@ -92,7 +91,7 @@ public func _RegexLiteralParsingFn(
   _ versionOut: UnsafeMutablePointer<CUnsignedInt>,
   _ captureStructureOut: UnsafeMutableRawPointer,
   _ captureStructureSize: CUnsignedInt,
-  _ bridgedDiagnosticBaseLoc: BridgedSourceLoc,
+  _ bridgedDiagnosticBaseLoc: swift.SourceLoc,
   _ bridgedDiagnosticEngine: BridgedDiagnosticEngine
 ) -> Bool {
   let str = String(cString: inputPtr)
@@ -108,9 +107,9 @@ public func _RegexLiteralParsingFn(
   } catch let error as CompilerParseError {
     var diagLoc = SourceLoc(bridged: bridgedDiagnosticBaseLoc)
     let diagEngine = DiagnosticEngine(bridged: bridgedDiagnosticEngine)
-    if let _diagLoc = diagLoc, let errorLoc = error.location {
+    if let errorLoc = error.location {
       let offset = str.utf8.distance(from: str.startIndex, to: errorLoc)
-      diagLoc = _diagLoc.advanced(by: offset)
+      diagLoc = diagLoc.advanced(by: offset)
     }
     diagEngine.diagnose(diagLoc, .regex_literal_parsing_error, error.message)
     return true
